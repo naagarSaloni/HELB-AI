@@ -1,8 +1,6 @@
 from fastapi import APIRouter, HTTPException
-
 from app.database.database import SessionLocal
 from app.database.models import Conversation
-
 
 router = APIRouter()
 
@@ -21,12 +19,12 @@ def get_conversation(conversation_id: int):
         if not conversation:
             raise HTTPException(
                 status_code=404,
-                detail="Conversation not found.",
+                detail="Conversation not found."
             )
 
         messages = sorted(
             conversation.messages,
-            key=lambda message: message.created_at,
+            key=lambda message: message.created_at
         )
 
         return {

@@ -7,20 +7,24 @@ from app.graph.nodes import (
     loan_node,
     repayment_node,
     knowledge_node,
+    support_node,
     guardrail_node,
-    escalation_node,
     route_after_supervisor,
     route_after_guardrail,
 )
 
 
+# ============================================================
+# BUILD WORKFLOW
+# ============================================================
+
 def build_workflow():
 
     graph = StateGraph(AgentState)
 
-    # -----------------------------
-    # Nodes
-    # -----------------------------
+    # --------------------------------------------------------
+    # NODES
+    # --------------------------------------------------------
 
     graph.add_node(
         "supervisor",
@@ -43,24 +47,24 @@ def build_workflow():
     )
 
     graph.add_node(
+        "support",
+        support_node,
+    )
+
+    graph.add_node(
         "guardrail",
         guardrail_node,
     )
 
-    graph.add_node(
-        "escalation",
-        escalation_node,
-    )
-
-    # -----------------------------
-    # Entry
-    # -----------------------------
+    # --------------------------------------------------------
+    # ENTRY POINT
+    # --------------------------------------------------------
 
     graph.set_entry_point("supervisor")
 
-    # -----------------------------
-    # Supervisor routing
-    # -----------------------------
+    # --------------------------------------------------------
+    # SUPERVISOR → AGENT
+    # --------------------------------------------------------
 
     graph.add_conditional_edges(
         "supervisor",
@@ -69,12 +73,13 @@ def build_workflow():
             "loan": "loan_agent",
             "repayment": "repayment_agent",
             "knowledge": "knowledge_agent",
+            "support": "support",
         },
     )
 
-    # -----------------------------
-    # Agents -> Guardrail
-    # -----------------------------
+    # --------------------------------------------------------
+    # AGENTS → GUARDRAIL
+    # --------------------------------------------------------
 
     graph.add_edge(
         "loan_agent",
@@ -91,29 +96,44 @@ def build_workflow():
         "guardrail",
     )
 
-    # -----------------------------
-    # Guardrail routing
-    # -----------------------------
+    # --------------------------------------------------------
+    # GUARDRAIL
+    # --------------------------------------------------------
 
     graph.add_conditional_edges(
         "guardrail",
         route_after_guardrail,
         {
+            # Reliable answer
             "answer": END,
-            "escalate": "escalation",
+
+            # Unsupported question.
+            #
+            # IMPORTANT:
+            # This does NOT create a ticket.
+            # The API waits for the user's Yes/No response.
+            "confirm": END,
         },
     )
 
-    # -----------------------------
-    # Escalation -> End
-    # -----------------------------
+    # --------------------------------------------------------
+    # DIRECT HUMAN SUPPORT
+    # --------------------------------------------------------
 
     graph.add_edge(
-        "escalation",
+        "support",
         END,
     )
 
+    # --------------------------------------------------------
+    # COMPILE
+    # --------------------------------------------------------
+
     return graph.compile()
 
+
+# ============================================================
+# GLOBAL WORKFLOW
+# ============================================================
 
 workflow = build_workflow()

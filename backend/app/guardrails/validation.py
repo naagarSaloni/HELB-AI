@@ -1,15 +1,14 @@
-from typing import Dict, Any, List
-
-
 FALLBACK_ANSWER = (
-    "I could not find enough reliable information in the available "
-    "official HELB documents to answer this question. "
-    "I recommend contacting HELB support for further assistance."
+    "I couldn't find enough reliable information in the "
+    "available official HELB information to answer that question. "
+    "Your question has been escalated to human support."
 )
 
 
 INSUFFICIENT_INFORMATION_PHRASES = [
+    "i couldn't find enough information",
     "i could not find enough information",
+    "i couldn't find enough reliable information",
     "i could not find enough reliable information",
     "not enough information",
     "insufficient information",
@@ -23,85 +22,85 @@ INSUFFICIENT_INFORMATION_PHRASES = [
 
 def validate_evidence(
     answer: str,
-    sources: List[Dict[str, Any]],
-) -> Dict[str, Any]:
+    sources: list,
+) -> dict:
+    """
+    Validate whether the generated answer has
+    supporting official HELB sources.
 
-    # ---------------------------------------------------------
-    # 1. No sources = unsupported
-    # ---------------------------------------------------------
+    If reliable official evidence is unavailable,
+    the response is marked for human escalation.
+    """
+
+    # --------------------------------------------------
+    # 1. No sources retrieved
+    # --------------------------------------------------
+
     if not sources:
         return {
             "supported": False,
             "answer": FALLBACK_ANSWER,
             "sources": [],
-            "reason": "No supporting sources were retrieved.",
+            "reason": "No supporting HELB documents were retrieved.",
         }
 
-    # ---------------------------------------------------------
-    # 2. Remove duplicate sources
-    # ---------------------------------------------------------
-    unique_sources = []
-    seen = set()
+    # --------------------------------------------------
+    # 2. Keep only official HELB sources
+    # --------------------------------------------------
 
-    for source in sources:
-        name = source.get("name", "")
-        url = source.get("url", "")
-
-        key = (name, url)
-
-        if key not in seen:
-            seen.add(key)
-            unique_sources.append(source)
-
-    # ---------------------------------------------------------
-    # 3. Keep only official HELB sources
-    # ---------------------------------------------------------
     official_sources = []
 
-    for source in unique_sources:
-        url = source.get("url", "").lower()
+    for source in sources:
+        url = str(source.get("url", "")).lower()
 
         if "helb.co.ke" in url:
             official_sources.append(source)
 
-    # ---------------------------------------------------------
-    # 4. No official HELB source = unsupported
-    # ---------------------------------------------------------
+    # --------------------------------------------------
+    # 3. No official HELB source
+    # --------------------------------------------------
+
     if not official_sources:
         return {
             "supported": False,
             "answer": FALLBACK_ANSWER,
             "sources": [],
-            "reason": "No official HELB source supports the response.",
+            "reason": "No official HELB source was retrieved.",
         }
 
-    # ---------------------------------------------------------
-    # 5. Detect when the LLM itself says evidence is missing
-    # ---------------------------------------------------------
+    # --------------------------------------------------
+    # 4. Check whether the RAG answer itself says
+    #    that information is unavailable
+    # --------------------------------------------------
+
     normalized_answer = " ".join(
-        answer.lower().split()
+        str(answer).lower().split()
     )
 
     for phrase in INSUFFICIENT_INFORMATION_PHRASES:
 
         if phrase in normalized_answer:
-
             return {
                 "supported": False,
                 "answer": FALLBACK_ANSWER,
                 "sources": official_sources,
                 "reason": (
-                    "The retrieved official HELB documents do not "
-                    "contain enough information to answer the question."
+                    "The available official HELB "
+                    "information does not contain enough "
+                    "evidence to answer the question."
                 ),
             }
 
-    # ---------------------------------------------------------
-    # 6. Evidence is available
-    # ---------------------------------------------------------
+    # --------------------------------------------------
+    # 5. Evidence exists
+    # --------------------------------------------------
+
     return {
         "supported": True,
         "answer": answer,
         "sources": official_sources,
-        "reason": "Response has supporting official HELB sources.",
+        "reason": (
+            "The response has supporting official "
+            "HELB sources."
+        ),
     }

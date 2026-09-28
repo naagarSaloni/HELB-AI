@@ -1,5 +1,3 @@
-from typing import Dict, Any
-
 from app.tools.human_escalation import create_support_ticket
 from app.database.database import SessionLocal
 from app.database.repository import create_support_ticket as save_support_ticket
@@ -8,9 +6,13 @@ from app.database.repository import create_support_ticket as save_support_ticket
 def escalate_to_human(
     question: str,
     reason: str,
-) -> Dict[str, Any]:
+):
+    """
+    Escalate a question to human support and
+    persist the support ticket in PostgreSQL.
+    """
 
-    # Create the ticket using the existing escalation tool
+    # 1. Create the ticket using the escalation tool
     result = create_support_ticket(
         question=question,
         reason=reason,
@@ -18,7 +20,7 @@ def escalate_to_human(
 
     ticket = result["ticket"]
 
-    # Save the ticket in PostgreSQL
+    # 2. Save the ticket in PostgreSQL
     db = SessionLocal()
 
     try:
@@ -29,6 +31,7 @@ def escalate_to_human(
             reason=reason,
         )
 
+        # 3. Return the database-backed ticket
         return {
             "tool": "human_escalation",
             "ticket": {
@@ -37,11 +40,7 @@ def escalate_to_human(
                 "question": saved_ticket.question,
                 "reason": saved_ticket.reason,
                 "created_at": saved_ticket.created_at.isoformat(),
-                "message": (
-                    "Your question requires human support. "
-                    f"Your support ticket ID is "
-                    f"{saved_ticket.ticket_id}."
-                ),
+                "message": ticket["message"],
             },
         }
 

@@ -1,80 +1,62 @@
 from typing import Literal
 
-from app.services.llm import get_llm
+Intent = Literal["loan", "repayment", "knowledge"]
 
 
-Intent = Literal[
+LOAN_KEYWORDS = [
     "loan",
-    "repayment",
-    "knowledge",
+    "apply",
+    "application",
+    "undergraduate",
+    "tvet",
+    "eligibility",
+    "eligible",
+    "guarantor",
+    "requirements",
+    "documents",
+    "degree",
+    "bursary",
 ]
 
 
-def classify_question(
-    question: str,
-) -> str:
+REPAYMENT_KEYWORDS = [
+    "repay",
+    "repayment",
+    "repaying",
+    "m-pesa",
+    "mpesa",
+    "payment",
+    "paid",
+    "balance",
+    "statement",
+    "check off",
+    "employer",
+]
 
-    llm = get_llm()
 
-    prompt = f"""
-You are the supervisor of a HELB AI Support Agent.
+def classify_question(question: str) -> str:
+    """
+    Fast deterministic supervisor.
 
-HELB means the Higher Education Loans Board of Kenya.
+    No LLM call is made here.
+    """
 
-Classify the user's question into exactly ONE category.
+    text = question.lower().strip()
 
-Categories:
+    repayment_score = sum(
+        1 for keyword in REPAYMENT_KEYWORDS
+        if keyword in text
+    )
 
-loan
-- Applying for a HELB loan
-- Loan eligibility
-- Loan requirements
-- Required documents
-- Loan types
-- Loan application process
+    loan_score = sum(
+        1 for keyword in LOAN_KEYWORDS
+        if keyword in text
+    )
 
-repayment
-- Repaying a HELB loan
-- M-PESA repayment
-- Repayment methods
-- Loan statement
-- Loan balance
-- Payment instructions
+    if repayment_score > loan_score and repayment_score > 0:
+        return "repayment"
 
-knowledge
-- General HELB information
-- Scholarships
-- Deadlines
-- General FAQs
-- Any HELB question that is not specifically about
-  applying for a loan or repaying a loan
+    if loan_score > 0:
+        return "loan"
 
-Return ONLY one word:
-
-loan
-
-OR
-
-repayment
-
-OR
-
-knowledge
-
-User question:
-{question}
-"""
-
-    response = llm.invoke(prompt)
-
-    intent = response.content.strip().lower()
-
-    if intent not in {
-        "loan",
-        "repayment",
-        "knowledge",
-    }:
-
-        return "knowledge"
-
-    return intent
+    return "knowledge"

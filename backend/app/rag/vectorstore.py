@@ -1,7 +1,6 @@
+from functools import lru_cache
 from pathlib import Path
-from typing import List
 
-from langchain_core.documents import Document
 from langchain_chroma import Chroma
 
 from app.rag.embeddings import get_embeddings
@@ -16,40 +15,24 @@ CHROMA_DIR = (
 COLLECTION_NAME = "helb_knowledge"
 
 
-def get_vectorstore() -> Chroma:
-    """
-    Return the persistent HELB ChromaDB vector store.
-    """
+@lru_cache(maxsize=1)
+def get_vectorstore():
 
-    embeddings = get_embeddings()
-
-    vectorstore = Chroma(
+    return Chroma(
         collection_name=COLLECTION_NAME,
-        embedding_function=embeddings,
+        embedding_function=get_embeddings(),
         persist_directory=str(CHROMA_DIR),
     )
 
-    return vectorstore
 
-
-def add_documents(
-    documents: List[Document],
-) -> None:
-    """
-    Add document chunks to ChromaDB.
-    """
+def add_documents(documents):
 
     vectorstore = get_vectorstore()
 
     vectorstore.add_documents(documents)
 
 
-def get_retriever(
-    k: int = 5,
-):
-    """
-    Create a similarity retriever from ChromaDB.
-    """
+def get_retriever(k: int = 3):
 
     vectorstore = get_vectorstore()
 
